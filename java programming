@@ -1,0 +1,107 @@
+package codejava;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Scanner;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+public class WeatherProgram {
+    private static final String API_URL = "https://samples.openweathermap.org/data/2.5/forecast/hourly?q=London,us&appid=b6907d289e10d714a6e88b30761fae22";
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int option;
+        do {
+            System.out.println("1. Get weather");
+            System.out.println("2. Get Wind Speed");
+            System.out.println("3. Get Pressure");
+            System.out.println("0. Exit");
+            System.out.print("Enter an option: ");
+            option = scanner.nextInt();
+            if (option == 1 || option == 2 || option == 3) {
+                System.out.print("Enter the date (yyyy-mm-dd): ");
+                String date = scanner.next();
+                if (option == 1) {
+                    // Call the API to get the temperature for the given date
+                    double temp = getTemperature(date);
+                    System.out.println("Temperature: " + temp);
+                } else if (option == 2) {
+                    // Call the API to get the wind speed for the given date
+                    double windSpeed = getWindSpeed(date);
+                    System.out.println("Wind Speed: " + windSpeed);
+                } else if (option == 3) {
+                    // Call the API to get the pressure for the given date
+                    double pressure = getPressure(date);
+                    System.out.println("Pressure: " + pressure);
+                }
+            }
+        } while (option != 0);
+        scanner.close();
+    }
+
+    public static double getTemperature(String date) {
+        JsonObject data = getData(date);
+        if (data != null) {
+            return data.getAsJsonObject("main").get("temp").getAsDouble();
+        }
+        return 0;
+    }
+
+    public static double getWindSpeed(String date) {
+        JsonObject data = getData(date);
+        if (data != null) {
+            return data.getAsJsonObject("wind").get("speed").getAsDouble();
+        }
+        return 0;
+    }
+
+    public static double getPressure(String date) {
+        JsonObject data = getData(date);
+        if (data != null) {
+            return data.getAsJsonObject("main").get("pressure").getAsDouble();
+        }
+        return 0;
+    }
+
+    private static JsonObject getData(String date) {
+        try {
+            URL url = new URL(API_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            String inputLine;
+            StringBuffer response = new StringBuffer();
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+
+            JsonElement jsonElement = JsonParser.parseString(response.toString());
+            JsonObject jsonObject = jsonElement.getAsJsonObject();
+            JsonArray list = jsonObject.getAsJsonArray("list");
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            LocalDateTime inputDate = LocalDateTime.parse(date + " 00:00:00", formatter);
+
+            for (JsonElement element : list) {
+                JsonObject data = element.getAsJsonObject();
+                String dt_txt = data.get("dt_txt").getAsString();
+                LocalDateTime dt = LocalDateTime.parse(dt_txt, formatter);
+                if (dt.toLocalDate().equals(inputDate.toLocalDate())) {
+                    return data;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+}
